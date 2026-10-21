@@ -30,7 +30,7 @@
 dsh plugin --profile <profile> add dsh-photo-bridge
 
 # GitHub，固定到某个 commit
-dsh plugin --profile <profile> add github:<your-name>/dsh-photo-bridge#<commit-sha>
+dsh plugin --profile <profile> add github:DeadLink233/dsh-photo-bridge#<commit-sha>
 ```
 
 或打开 DSH 侧边栏 **Plugins → Add plugin**，填写包名/仓库地址。

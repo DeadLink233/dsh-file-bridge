@@ -16,10 +16,10 @@ DSH Hub 是**社区维护的 DSH 插件索引**，不是 DeepSeek 官方商店�
 
 **这个目录本身就是仓库根目录。** 不要把包含它的父目录整个推上去，否则仓库根目录没有 `package.json`，DSH Hub 检查会失败。
 
-在 GitHub 新建一个公开仓库，例如：
+在 GitHub 新建一个公开仓库：
 
 ```text
-https://github.com/<your-name>/dsh-photo-bridge
+https://github.com/DeadLink233/dsh-photo-bridge
 ```
 
 然后在本目录执行：
@@ -29,7 +29,7 @@ git init
 git add .
 git commit -m "Initial public release of dsh-photo-bridge"
 git branch -M main
-git remote add origin https://github.com/<your-name>/dsh-photo-bridge.git
+git remote add origin https://github.com/DeadLink233/dsh-photo-bridge.git
 git push -u origin main
 ```
 
@@ -38,9 +38,9 @@ git push -u origin main
 ```json
 "repository": {
   "type": "git",
-  "url": "https://github.com/<your-name>/dsh-photo-bridge.git"
+  "url": "https://github.com/DeadLink233/dsh-photo-bridge.git"
 },
-"homepage": "https://github.com/<your-name>/dsh-photo-bridge#readme"
+"homepage": "https://github.com/DeadLink233/dsh-photo-bridge#readme"
 ```
 
 ## 2. 添加自动收录 Topic（可选）
@@ -59,7 +59,7 @@ DSH Hub 会定时自动同步带这个 Topic 的仓库。
 不要用当前已经装了本地链接版插件的 profile。新建一个 demo profile：
 
 ```bash
-dsh plugin --profile demo add github:<your-name>/dsh-photo-bridge#<commit-sha>
+dsh plugin --profile demo add github:DeadLink233/dsh-photo-bridge#<commit-sha>
 ```
 
 - `<commit-sha>` 用完整的 40 位 SHA：`git rev-parse HEAD`

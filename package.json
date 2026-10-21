@@ -4,6 +4,14 @@
   "description": "Phone camera photo bridge for DSH: photos land in the current conversation's draft attachment bar over the local network.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DeadLink233/dsh-photo-bridge.git"
+  },
+  "homepage": "https://github.com/DeadLink233/dsh-photo-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/DeadLink233/dsh-photo-bridge/issues"
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",
