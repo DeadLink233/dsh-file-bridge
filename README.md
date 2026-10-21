@@ -21,19 +21,26 @@
 
 ## 安装
 
-### DSH Hub / 手动安装
+这是一个独立的 DSH 插件仓库，包含 Host 半、浏览器半、测试和文档；不依赖 DSH Hub 收录。
 
-插件在 DSH Hub 收录后，可以直接在插件页安装。也可以按包名或 Git 仓库手动安装：
+### 从 GitHub 安装（推荐）
 
 ```bash
-# npm 包
-dsh plugin --profile <profile> add dsh-photo-bridge
-
-# GitHub，固定到某个 commit
+# 固定到某个 commit，避免默认分支后续变动
 dsh plugin --profile <profile> add github:DeadLink233/dsh-photo-bridge#<commit-sha>
 ```
 
-或打开 DSH 侧边栏 **Plugins → Add plugin**，填写包名/仓库地址。
+也可以打开 DSH 侧边栏 **Plugins → Add plugin**，填写 GitHub 仓库地址。
+
+### 从 npm 安装（发布后）
+
+```bash
+dsh plugin --profile <profile> add dsh-photo-bridge
+```
+
+### 从 DSH Hub 安装（可选）
+
+插件被 DSH Hub 收录后，可以直接在插件页搜索安装。DSH Hub 是社区维护的插件索引，不是 DeepSeek 官方商店；是否收录不影响 GitHub/npm 安装。
 
 ### 本地目录安装
 
