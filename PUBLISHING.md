@@ -12,36 +12,17 @@ DSH Hub 是**社区维护的 DSH 插件索引**，不是 DeepSeek 官方商店�
 - 已补 `license`、`keywords`、`engines.dsh`、`publishConfig`
 - README 包含能力、配置、权限、卸载和验证方式
 
-## 1. 创建 GitHub 仓库
+## 1. GitHub 仓库（已完成）
 
-**这个目录本身就是仓库根目录。** 不要把包含它的父目录整个推上去，否则仓库根目录没有 `package.json`，DSH Hub 检查会失败。
-
-在 GitHub 新建一个公开仓库：
+公开仓库：
 
 ```text
 https://github.com/DeadLink233/dsh-photo-bridge
 ```
 
-然后在本目录执行：
+本目录就是仓库根目录，已初始化、提交并推送。`package.json` 已包含真实的 `repository`、`homepage` 和 `bugs` 地址。
 
-```bash
-git init
-git add .
-git commit -m "Initial public release of dsh-photo-bridge"
-git branch -M main
-git remote add origin https://github.com/DeadLink233/dsh-photo-bridge.git
-git push -u origin main
-```
-
-推上去后，在 `package.json` 里补上真实仓库地址（可选，但建议）：
-
-```json
-"repository": {
-  "type": "git",
-  "url": "https://github.com/DeadLink233/dsh-photo-bridge.git"
-},
-"homepage": "https://github.com/DeadLink233/dsh-photo-bridge#readme"
-```
+如果以后要从零重建，注意不要把包含本目录的父目录整个推上去，否则仓库根目录没有 `package.json`，DSH Hub 检查会失败。
 
 ## 2. 添加自动收录 Topic（可选）
 
