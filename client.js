@@ -2,10 +2,10 @@
  * Client half of the phone photo bridge.
  *
  * Renders the ambient dock row under the composer, a compact trigger in the
- * blank-session Hero (plus a persistent sidebar action), and a headless drain
- * loop in the New Session row. All of them share the Host queue and the
- * conversation service: the Hero and sidebar triggers open the pairing panel,
- * while the headless entry injects a received photo into the blank Session's
+ * blank-session Hero, and a headless drain loop in the New Session row. All of
+ * them share the Host queue and the conversation service: the Hero trigger
+ * opens the pairing panel, while the headless entry injects a received photo
+ * into the blank Session's
  * draft before the first message. The composer dock is skipped while the Hero
  * is showing, which is why the other seats are needed. Everything is plain
  * JavaScript: the browser loads this file as a module factory, so there is no
@@ -99,13 +99,6 @@ window.__ModuleLoader__.load({
         position: absolute; top: 4px; right: 4px;
         box-shadow: 0 0 0 2px var(--dsw-alias-bg-layer-2);
       }
-      .pb-root[data-variant="sidebar"] { display: flex; width: 100%; }
-      .pb-root[data-variant="sidebar"] .pb-row {
-        width: 100%; height: 32px; justify-content: flex-start; padding: 0 10px;
-        gap: 8px; border-radius: 8px; font-size: 12.5px;
-      }
-      .pb-root[data-variant="sidebar"] .pb-icon svg { width: 15px; height: 15px; }
-      .pb-root[data-variant="sidebar"] .pb-sidebar-rail { justify-content: center; padding: 0; }
       .pb-row {
         display: inline-flex; align-items: center; gap: 6px; height: 24px; max-width: 100%;
         padding: 0 8px; border: 0; border-radius: 7px; background: transparent;
@@ -322,13 +315,11 @@ window.__ModuleLoader__.load({
         const t = typeof props.t === 'function' ? props.t : bound
         const variant = props.variant === 'brand'
           ? 'brand'
-          : props.variant === 'sidebar'
-            ? 'sidebar'
-            : props.variant === 'headless'
-              ? 'headless'
-              : props.variant === 'hero'
-                ? 'hero'
-                : 'dock'
+          : props.variant === 'headless'
+            ? 'headless'
+            : props.variant === 'hero'
+              ? 'hero'
+              : 'dock'
         const sessionId = props.sessionId
         const inputActions = props.inputActions
         const [open, setOpen] = React.useState(false)
@@ -588,10 +579,8 @@ window.__ModuleLoader__.load({
         })()
         const buttonClass = variant === 'brand'
           ? ['pb-row', 'pb-brand-row', props.className].filter(Boolean).join(' ')
-          : variant === 'sidebar'
-            ? ['pb-row', 'pb-sidebar-row', props.wide === false ? 'pb-sidebar-rail' : null].filter(Boolean).join(' ')
-            : 'pb-row'
-        const showLabel = variant === 'dock' || (variant === 'sidebar' && props.wide !== false)
+          : 'pb-row'
+        const showLabel = variant === 'dock'
 
         return h(
           'div',
@@ -704,7 +693,6 @@ window.__ModuleLoader__.load({
         const PhotoDock = createPhotoDock(ctx)
         const PhotoHeadless = (props) => h(PhotoDock, { ...props, variant: 'headless' })
         const PhotoBrand = (props) => h(PhotoDock, { ...props, variant: 'brand' })
-        const PhotoSidebar = (props) => h(PhotoDock, { ...props, variant: 'sidebar' })
 
         // Normal conversations: the ambient row below the composer.
         ctx.slots.inject('conversation.composer.dock', () =>
@@ -721,7 +709,7 @@ window.__ModuleLoader__.load({
 
         // Blank New Session: the dock is skipped while the hero is showing. This
         // headless entry only runs the drain/injection loop; the visible trigger
-        // is the root-scoped Hero brand mark / sidebar action below.
+        // is the root-scoped Hero brand mark below.
         ctx.slots.inject('conversation.hero.options', () =>
           ctx.slots.register(
             {
@@ -731,21 +719,6 @@ window.__ModuleLoader__.load({
               locale: NS,
             },
             PhotoHeadless,
-          ),
-        )
-
-        // Frame-wide persistent trigger: available even when the Hero, the
-        // composer dock, and the Session-scoped controls are not rendered.
-        ctx.slots.inject('sidebar.footer.action', () =>
-          ctx.slots.register(
-            {
-              name: 'sidebar.footer.action',
-              id: 'photo-bridge',
-              order: 50,
-              locale: NS,
-              label: () => ctx.locale.bind(NS)('title'),
-            },
-            PhotoSidebar,
           ),
         )
 

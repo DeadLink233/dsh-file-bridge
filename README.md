@@ -17,7 +17,7 @@
 - 二维码在本地生成，不调用任何在线二维码服务。
 - 不动 DSH 自带 Web 服务：GUI 仍只在回环地址上，插件另起一个收图端口。
 - 图片进入的是**当前会话的草稿附件**，和从电脑上拖一张图进去完全等价；什么时候发送、配什么文字，由你决定。
-- 新建对话还没发送第一句时，Hero 顶部和侧边栏底部也有入口；照片同样先进入草稿附件栏。
+- 新建对话还没发送第一句时，Hero 顶部也有入口；照片同样先进入草稿附件栏。
 - 插件自身没有 npm 依赖、没有构建步骤；二维码编码器已放在 `vendor/QRCode`。
 
 ## 兼容性
@@ -62,7 +62,7 @@ dsh plugin --profile <profile> add dsh-photo-bridge
 
 ## 配对与使用
 
-1. 点开 **📷 手机拍照**（普通会话在输入框下方；新对话在 Hero 顶部或侧边栏底部）。
+1. 点开 **📷 手机拍照**（普通会话在输入框下方；新对话在 Hero 顶部）。
 2. 手机与电脑连同一个 Wi-Fi，用手机相机扫描面板里的二维码（打不开时再点“复制链接”）。
 3. iOS 建议「分享 → 添加到主屏幕」，Android 建议「添加到主屏幕」，下次点图标即可。
 4. 在手机上点 **拍照**（或 **相册**），看到 `✓ 电脑已收到` 即可。
@@ -70,7 +70,7 @@ dsh plugin --profile <profile> add dsh-photo-bridge
 
 ### 第一句话之前
 
-新建对话还没发送第一句时，输入框下方的 dock 不会渲染，所以插件额外提供了 Hero 顶部和侧边栏底部两个入口。
+新建对话还没发送第一句时，输入框下方的 dock 不会渲染，所以插件额外提供了 Hero 顶部入口。
 
 如果照片先到、页面还没选 Workspace/Session，图片会先在 Host 队列里等待；出现空白 Session 后自动进入草稿附件栏，可以先确认附件再发第一句。发送第一句后，输入框下方的 dock 恢复。
 
@@ -163,7 +163,7 @@ node test/smoke.mjs
 index.js        Host 半：配置校验 + Cordis 生命周期 + 注册客户端 API 路由
 bridge.js       收图 HTTP 服务、队列、魔数校验、inbox 持久化、二维码生成
 phone.html.js   手机端页面（零外部请求）
-client.js       浏览器半：dock 行 + Hero/侧边栏入口 + 二维码 + 轮询 + createDrafts/addAttachments
+client.js       浏览器半：dock 行 + Hero 入口 + 二维码 + 轮询 + createDrafts/addAttachments
 qr.js           配对 URL → SVG path（不访问任何在线二维码服务）
 vendor/QRCode   二维码编码器（Kazuhiko Arase，MIT，见 vendor/QRCode/LICENSE）
 locale/         中英文界面文案
