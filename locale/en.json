@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Phone Photo Bridge",
-    "description": "Take a photo on your phone and it appears in the current conversation's attachment bar, with no action on the computer."
+    "title": "Phone File Bridge",
+    "description": "Take a photo or pick a file on your phone; it appears in the current conversation attachment bar with no action on the computer."
   }
 }

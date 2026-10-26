@@ -1,5 +1,5 @@
 /**
- * Client half of the phone photo bridge.
+ * Client half of the phone file bridge.
  *
  * Renders the ambient dock row under the composer, a compact trigger in the
  * blank-session Hero, and a headless drain loop in the New Session row. All of
@@ -21,7 +21,7 @@ window.__ModuleLoader__.load({
     const NS = 'photo-bridge'
 
     const ZH = {
-      title: '手机拍照',
+      title: '手机传文件',
       waiting: '等待手机发送',
       connecting: '连接中…',
       unavailable: '接收服务不可用',
@@ -29,23 +29,23 @@ window.__ModuleLoader__.load({
       copy: '复制链接',
       copied: '已复制',
       refresh: '刷新',
-      panelTitle: '手机拍照直传',
-      panelDesc: '手机与电脑连同一个 Wi-Fi，用手机相机扫码。拍完的图片会自动加入输入框上方的附件栏。',
+      panelTitle: '手机传文件',
+      panelDesc: '手机与电脑连同一个 Wi-Fi，扫码后拍照或选择文件。发送的内容会自动加入输入框上方的附件栏。',
       qrTitle: '扫码配对',
-      qrHint: '用手机相机扫码打开拍照页；微信内请点右上角「···」→「在浏览器打开」。',
+      qrHint: '用手机相机扫码打开传输页；微信内请点右上角「···」→「在浏览器打开」。',
       qrAlt: '配对二维码',
       unavailableHint: '接收服务没有启动。请确认插件已启用，然后刷新页面重试。',
       noLanHint: '没有检测到局域网地址，手机无法连接。请连接 Wi-Fi 或网线；如果有多块网卡，请在插件配置里填写 bind。',
       lastReceived: '最近接收',
-      never: '还没有收到图片',
-      injectError: '图片已收到，但加入附件栏失败，会自动重试。',
+      never: '还没有收到文件',
+      injectError: '文件已收到，但加入附件栏失败，会自动重试。',
       firewallHint: '首次使用时，请在 Windows 防火墙提示中选择「允许专用网络」。',
       copyFailed: '复制失败，请手动选择链接。',
       port: '端口',
     }
 
     const EN = {
-      title: 'Phone photo',
+      title: 'Phone files',
       waiting: 'Waiting for phone',
       connecting: 'Connecting…',
       unavailable: 'Receiver unavailable',
@@ -53,16 +53,16 @@ window.__ModuleLoader__.load({
       copy: 'Copy link',
       copied: 'Copied',
       refresh: 'Refresh',
-      panelTitle: 'Phone Photo Bridge',
-      panelDesc: 'Connect your phone to the same Wi-Fi and scan the code. Photos you take are added to the attachment bar above the composer.',
+      panelTitle: 'Phone File Bridge',
+      panelDesc: 'Connect your phone to the same Wi-Fi, then take a photo or pick a file. What you send is added to the attachment bar above the composer.',
       qrTitle: 'Scan to pair',
-      qrHint: 'Scan with your phone camera to open the camera page. If it opens inside an app, use the menu to open it in your browser.',
+      qrHint: 'Scan with your phone camera to open the transfer page. If it opens inside an app, use the menu to open it in your browser.',
       qrAlt: 'Pairing QR code',
       unavailableHint: 'The receiver is not running. Check that the plugin is enabled, then reload the page.',
       noLanHint: 'No LAN address was detected, so the phone cannot connect. Join a Wi-Fi or wired network, or set bind in the plugin config.',
       lastReceived: 'Last received',
-      never: 'No photos yet',
-      injectError: 'A photo arrived but could not be added to the draft; it will retry automatically.',
+      never: 'No files yet',
+      injectError: 'A file arrived but could not be added to the draft; it will retry automatically.',
       firewallHint: 'On first use, allow private networks in the Windows Firewall prompt.',
       copyFailed: 'Copy failed; select the link manually.',
       port: 'Port',
@@ -267,7 +267,7 @@ window.__ModuleLoader__.load({
       return chinese ? `${days} 天前` : `${days}d ago`
     }
 
-    function CameraIcon() {
+    function UploadIcon() {
       return h(
         'svg',
         {
@@ -281,8 +281,9 @@ window.__ModuleLoader__.load({
           strokeLinejoin: 'round',
           'aria-hidden': true,
         },
-        h('path', { d: 'M4 7.5h3l1.6-2.3h6.8L17 7.5h3v11H4z' }),
-        h('circle', { cx: 12, cy: 13, r: 3.4 }),
+        h('path', { d: 'M12 16V4' }),
+        h('path', { d: 'M7 9l5-5 5 5' }),
+        h('path', { d: 'M5 16v4h14v-4' }),
       )
     }
 
@@ -444,10 +445,6 @@ window.__ModuleLoader__.load({
                 if (stopped || injected >= MAX_PER_TICK) break
                 if (!item || typeof item.id !== 'string') continue
                 if (isClaimed(item.id) || shared.pendingAcks.has(item.id)) continue
-                if (typeof item.bytes === 'number' && item.bytes > 40 * 1024 * 1024) {
-                  shared.pendingAcks.set(item.id, item.seq)
-                  continue
-                }
                 claim(item.id)
                 try {
                   const response = await fetch(`/photo-bridge/item/${encodeURIComponent(item.id)}`, {
@@ -456,7 +453,7 @@ window.__ModuleLoader__.load({
                   })
                   if (!response.ok) throw new Error(`HTTP_${response.status}`)
                   const blob = await response.blob()
-                  const name = typeof item.name === 'string' && item.name ? item.name : `photo-${item.id}`
+                  const name = typeof item.name === 'string' && item.name ? item.name : `file-${item.id}`
                   const file = new File([blob], name, {
                     type: typeof item.mime === 'string' && item.mime ? item.mime : blob.type || 'application/octet-stream',
                   })
@@ -600,7 +597,7 @@ window.__ModuleLoader__.load({
               title: variant === 'dock' ? t('panelTitle') : `${t('panelTitle')} — ${status}`,
               onClick: () => setOpen((value) => !value),
             },
-            h('span', { className: 'pb-icon' }, h(CameraIcon, null)),
+            h('span', { className: 'pb-icon' }, h(UploadIcon, null)),
             showLabel ? h('span', { className: 'pb-title' }, t('title')) : null,
             h('span', { className: 'pb-dot', 'data-tone': tone, 'aria-hidden': true }),
             variant === 'dock' ? h('span', { className: 'pb-status' }, status) : null,

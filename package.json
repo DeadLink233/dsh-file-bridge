@@ -1,7 +1,7 @@
 {
   "name": "dsh-photo-bridge",
-  "version": "1.0.1",
-  "description": "Phone camera photo bridge for DSH: photos land in the current conversation's draft attachment bar over the local network.",
+  "version": "1.1.0",
+  "description": "Phone photo and file bridge for DSH: transfer photos or arbitrary files from a phone into the current conversation draft attachment bar over the local network.",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -19,7 +19,10 @@
     "photo",
     "camera",
     "attachment",
-    "lan"
+    "lan",
+    "file",
+    "transfer",
+    "phone"
   ],
   "engines": {
     "dsh": ">=0.2.1-rc.2 <0.3.0"

@@ -9,7 +9,7 @@
  */
 
 /** Bumped whenever the phone page changes, so a QR rescanned after an update bypasses any WebView cache. */
-export const PHONE_BUILD = '6'
+export const PHONE_BUILD = '7'
 
 const COMMON_CSS = `
   :root {
@@ -114,6 +114,11 @@ const COMMON_CSS = `
     background: var(--chip);
   }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .kind {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; color: var(--muted);
+    font-size: 11px; font-weight: 700; letter-spacing: .3px;
+  }
   .body { min-width: 0; flex: 1; }
   .name { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
@@ -141,7 +146,7 @@ const COMMON_CSS = `
 `;
 
 const CAMERA_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7.5h3l1.6-2.3h6.8L17 7.5h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>`;
-const GALLERY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.2"/><circle cx="9" cy="10" r="1.7"/><path d="M5 17l5-5 4.2 4.2 2.3-2.3 2.5 2.5"/></svg>`;
+const FILE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h7l5 5v12H6z"/><path d="M13 3.5v5h5"/></svg>`;
 
 /** Serialize a value for a `<script>` element without allowing `</script>`. */
 function scriptJson(value) {
@@ -172,15 +177,21 @@ ${body}
 </html>`;
 }
 
-/** The phone capture page for one pairing token. */
-export function phonePageHtml(token) {
+/** The phone transfer page for one pairing token. */
+export function phonePageHtml(token, options = {}) {
+  const maxBytes = Number.isFinite(options.maxBytes) && options.maxBytes > 0
+    ? options.maxBytes
+    : 20 * 1024 * 1024
+  const maxLabel = maxBytes >= 1024 * 1024
+    ? `${Math.round(maxBytes / 1024 / 1024)} MB`
+    : `${Math.round(maxBytes / 1024)} KB`
   const body = `
 <div class="wrap">
   <div class="top">
-    <span class="brand">拍照 → DSH</span>
+    <span class="brand">传文件 → DSH</span>
     <span class="conn" id="conn" data-mode="ok">已连接</span>
   </div>
-  <p class="lead">拍照后，图片会自动出现在电脑端输入框上方的附件栏。你只需要回到电脑上打字提问。</p>
+  <p class="lead">拍照或选择文件，发送后会自动出现在电脑端输入框上方的附件栏。你只需要回到电脑上处理。</p>
   <p class="tip" id="tip" hidden>提示：在 Safari 点「分享 → 添加到主屏幕」，下次可一键打开。</p>
   <div class="actions">
     <div class="act primary">
@@ -188,18 +199,19 @@ export function phonePageHtml(token) {
       <span class="visual" aria-hidden="true">${CAMERA_ICON}<span>拍照</span></span>
     </div>
     <div class="act secondary">
-      <input id="gal" class="file" type="file" accept="image/*" multiple aria-label="相册">
-      <span class="visual" aria-hidden="true">${GALLERY_ICON}<span>相册</span></span>
+      <input id="files" class="file" type="file" multiple aria-label="选择文件">
+      <span class="visual" aria-hidden="true">${FILE_ICON}<span>文件</span></span>
     </div>
   </div>
   <ul class="list" id="list"></ul>
-  <p class="empty" id="empty">还没有发送图片</p>
-  <p class="foot">同一 Wi-Fi · 电脑端 DSH 保持打开 · v${PHONE_BUILD}</p>
+  <p class="empty" id="empty">还没有发送文件</p>
+  <p class="foot">同一 Wi-Fi · 单个文件不超过 ${maxLabel} · v${PHONE_BUILD}</p>
 </div>`;
 
   const script = `
 (function () {
   var TOKEN = ${scriptJson(token)};
+  var MAX_BYTES = ${scriptJson(maxBytes)};
   var UPLOAD = '/p/' + TOKEN + '/upload';
   var items = [];
   var busy = false;
@@ -221,8 +233,8 @@ export function phonePageHtml(token) {
     return (n / 1024 / 1024).toFixed(1) + ' MB';
   }
   function errLabel(code) {
-    if (code === 'TOO_LARGE') return '图片太大';
-    if (code === 'BAD_TYPE') return '不支持的图片格式';
+    if (code === 'TOO_LARGE') return '文件太大';
+    if (code === 'BAD_TYPE') return '文件为空或无效';
     if (code === 'NOT_FOUND' || code === 'HTTP_404') return '链接已失效';
     if (code === 'timeout') return '上传超时';
     return '网络错误';
@@ -230,20 +242,40 @@ export function phonePageHtml(token) {
   function displayName(file) {
     var name = (file && file.name) || '';
     if (name) return name;
-    var ext = (file && file.type && file.type.indexOf('heic') >= 0) ? 'heic'
-      : (file && file.type && file.type.indexOf('png') >= 0) ? 'png'
-      : (file && file.type && file.type.indexOf('webp') >= 0) ? 'webp' : 'jpg';
-    return 'photo-' + Date.now() + '.' + ext;
+    var type = (file && file.type) || '';
+    var ext = type.indexOf('/') >= 0 ? type.split('/')[1] : 'bin';
+    ext = ext.replace(/[^a-z0-9]/gi, '').slice(0, 8) || 'bin';
+    return 'file-' + Date.now() + '.' + ext;
+  }
+  function isImage(file) {
+    return /^image\//.test((file && file.type) || '') ||
+      /\.(jpe?g|png|webp|gif|heic|heif|bmp|avif)$/i.test((file && file.name) || '');
+  }
+  function kindLabel(file) {
+    var name = (file && file.name) || '';
+    var ext = name.indexOf('.') >= 0 ? name.split('.').pop().toUpperCase() : '';
+    return ext && ext.length <= 4 ? ext : 'FILE';
   }
 
   function createNode(item) {
     var li = document.createElement('li');
     li.className = 'item';
     li.dataset.status = 'queued';
-    li.innerHTML = '<div class="thumb"><img alt=""></div>' +
+    li.innerHTML = '<div class="thumb"></div>' +
       '<div class="body"><div class="name"></div><div class="sub"></div>' +
       '<div class="bar"><i></i></div></div><div class="badge"></div>';
-    li.querySelector('img').src = URL.createObjectURL(item.file);
+    var thumb = li.querySelector('.thumb');
+    if (isImage(item.file)) {
+      var img = document.createElement('img');
+      img.alt = '';
+      img.src = URL.createObjectURL(item.file);
+      thumb.appendChild(img);
+    } else {
+      var kind = document.createElement('span');
+      kind.className = 'kind';
+      kind.textContent = kindLabel(item.file);
+      thumb.appendChild(kind);
+    }
     li.querySelector('.name').textContent = displayName(item.file);
     return li;
   }
@@ -286,6 +318,14 @@ export function phonePageHtml(token) {
     for (var i = 0; i < files.length; i++) {
       var file = files[i];
       if (!file) continue;
+      if (file.size > MAX_BYTES) {
+        alert('单个文件不能超过 ' + fmtBytes(MAX_BYTES));
+        continue;
+      }
+      if (file.size === 0) {
+        alert('不能发送空文件');
+        continue;
+      }
       var item = { id: ++seq, file: file, status: 'queued', progress: 0, error: '', bytes: 0 };
       item.node = createNode(item);
       items.push(item);
@@ -364,7 +404,7 @@ export function phonePageHtml(token) {
     }
     if (!next) {
       var failed = items.some(function (it) { return it.status === 'error'; });
-      setConn(failed ? 'error' : 'ok', failed ? '有图片未发送' : '已连接');
+      setConn(failed ? 'error' : 'ok', failed ? '有文件未发送' : '已连接');
       return;
     }
     busy = true;
@@ -385,14 +425,14 @@ export function phonePageHtml(token) {
   }
 
   var cam = document.getElementById('cam');
-  var gal = document.getElementById('gal');
+  var filesInput = document.getElementById('files');
   cam.addEventListener('change', function () {
     addFiles(cam.files);
     cam.value = '';
   });
-  gal.addEventListener('change', function () {
-    addFiles(gal.files);
-    gal.value = '';
+  filesInput.addEventListener('change', function () {
+    addFiles(filesInput.files);
+    filesInput.value = '';
   });
 
   window.addEventListener('offline', function () { setConn('error', '网络已断开'); });
@@ -433,15 +473,15 @@ export function phonePageHtml(token) {
   }
 })();`;
 
-  return pageShell({ title: '拍照 → DSH', body, script });
+  return pageShell({ title: '传文件 → DSH', body, script });
 }
 
 /** Landing page: resumes a stored pairing token, or explains how to pair. */
 export function landingPageHtml() {
   const body = `
 <div class="wrap" style="padding-top:44px">
-  <div class="top"><span class="brand">拍照 → DSH</span></div>
-  <p class="lead">请使用电脑端「手机拍照」面板里显示的配对链接打开本页，或把链接粘贴到下面。</p>
+  <div class="top"><span class="brand">传文件 → DSH</span></div>
+  <p class="lead">请使用电脑端「手机传文件」面板里显示的配对链接打开本页，或把链接粘贴到下面。</p>
   <label class="lead" for="v">配对链接或 token</label>
   <input id="v" inputmode="latin" autocomplete="off" spellcheck="false"
     placeholder="http://192.168.1.5:8787/p/…"
@@ -467,15 +507,15 @@ export function landingPageHtml() {
     location.href = '/p/' + match[1];
   });
 })();`;
-  return pageShell({ title: '拍照 → DSH', body, script });
+  return pageShell({ title: '传文件 → DSH', body, script });
 }
 
 /** Shown when a stored or typed token no longer matches the current listener. */
 export function expiredPageHtml() {
   const body = `
 <div class="wrap" style="padding-top:44px">
-  <div class="top"><span class="brand">拍照 → DSH</span></div>
-  <p class="lead" style="color:var(--err)">这个配对链接已经失效。请在电脑端打开「手机拍照」面板，复制新的链接。</p>
+  <div class="top"><span class="brand">传文件 → DSH</span></div>
+  <p class="lead" style="color:var(--err)">这个配对链接已经失效。请在电脑端打开「手机传文件」面板，复制新的链接。</p>
   <p class="lead">如果你刚刚重置过配对 token，旧链接就不能再用了。</p>
   <button type="button" id="clear"
     style="width:100%;height:48px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-weight:600">清除本地旧链接</button>

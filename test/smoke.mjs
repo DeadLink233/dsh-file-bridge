@@ -1,5 +1,5 @@
 /**
- * Standalone smoke test for the photo bridge core.
+ * Standalone smoke test for the phone file bridge core.
  *
  *   node test/smoke.mjs
  *
@@ -56,7 +56,7 @@ try {
 
   const page = await fetch(`${phoneBase}/p/${token}`)
   const html = await page.text()
-  check('phone page served', page.ok && html.includes('拍照') && html.includes(token))
+  check('phone page served', page.ok && html.includes('传文件') && html.includes('文件') && html.includes(token))
   check('phone page has CSP', String(page.headers.get('content-security-policy')).includes("default-src 'none'"))
   check('phone page has no external http', !/https?:\/\/(?!192\.168\.|127\.|localhost)/.test(html.replace(/http:\/\/192\.168\.1\.5:8787/g, '')))
 
@@ -76,13 +76,20 @@ try {
   check('upload reports jpeg mime', uploaded.mime === 'image/jpeg')
   check('upload reports bytes', uploaded.bytes === JPEG.length)
 
-  const junk = await fetch(`${phoneBase}/p/${token}/upload`, {
+  const textUpload = await fetch(`${phoneBase}/p/${token}/upload`, {
     method: 'POST',
-    headers: { 'content-type': 'image/jpeg' },
+    headers: { 'content-type': 'text/plain', 'x-filename': encodeURIComponent('notes.txt') },
     body: Buffer.from('not an image at all'),
   })
-  const junkBody = await junk.json()
-  check('junk body rejected', junk.status === 415 && junkBody.code === 'BAD_TYPE')
+  const textFile = await textUpload.json()
+  check('text file accepted', textUpload.ok && textFile.ok === true, JSON.stringify(textFile))
+  check('text file keeps mime and name', textFile.mime === 'text/plain' && textFile.name === 'notes.txt')
+  const textAck = await fetch(`${apiBase}/photo-bridge/ack`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id: textFile.id }),
+  })
+  check('text file can be acked', textAck.ok && (await textAck.json()).ok === true)
 
   const oversized = await fetch(`${phoneBase}/p/${token}/upload`, {
     method: 'POST',
@@ -217,6 +224,14 @@ try {
     body: JSON.stringify({ id: chinese.id }),
   })
 
+  const pdfUpload = await fetch(`${phoneBase}/p/${token}/upload`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/pdf', 'x-filename': encodeURIComponent('report.pdf') },
+    body: Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n'),
+  })
+  const pdf = await pdfUpload.json()
+  check('pdf file accepted', pdfUpload.ok && pdf.ok === true && pdf.mime === 'application/pdf' && pdf.name === 'report.pdf', JSON.stringify(pdf))
+
   const kept = await fs.readdir(path.join(dataDir, 'kept'))
   check('acked originals move out of inbox', kept.some((name) => name.endsWith('.jpg')), JSON.stringify(kept))
 
@@ -230,15 +245,22 @@ try {
     await fetch(`http://127.0.0.1:${secondPort}/photo-bridge/queue?since=0`)
   ).json()
   check(
-    'restart restores only undelivered photos',
-    restoredQueue.items.length === 1,
-    JSON.stringify(restoredQueue.items.map((item) => item.name)),
+    'restart restores only undelivered files',
+    restoredQueue.items.length === 2 &&
+      restoredQueue.items.some((item) => item.mime === 'application/pdf' && item.name.endsWith('.pdf')),
+    JSON.stringify(restoredQueue.items.map((item) => [item.name, item.mime])),
   )
   await new Promise((resolve) => secondServer.close(resolve))
   await second.close()
 
   const stored = await fs.readdir(path.join(dataDir, 'inbox'))
-  check('inbox stores browser-friendly files', stored.length >= 1 && stored.every((name) => /\.(jpg|png|webp|gif|heic)$/.test(name)))
+  check(
+    'inbox stores arbitrary files with safe names',
+    stored.some((name) => name.endsWith('.jpg')) &&
+      stored.some((name) => name.endsWith('.pdf')) &&
+      stored.every((name) => /\.(jpg|png|webp|gif|heic|pdf)$/.test(name)),
+    JSON.stringify(stored),
+  )
 } finally {
   await new Promise((resolve) => apiServer.close(resolve))
   await bridge.close()

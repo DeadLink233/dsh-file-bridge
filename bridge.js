@@ -1,5 +1,5 @@
 /**
- * Photo bridge core.
+ * Phone file bridge core.
  *
  * Owns the LAN-facing HTTP listener, the upload queue, magic-number sniffing,
  * and the small JSON/byte API consumed by the Web client half through DSH's own
@@ -91,6 +91,53 @@ export function sniffMedia(head) {
     }
   }
   return undefined
+}
+
+/** Best-effort MIME hints for files whose content type is missing. */
+const MIME_BY_EXT = new Map([
+  ['jpg', 'image/jpeg'], ['jpeg', 'image/jpeg'], ['png', 'image/png'],
+  ['webp', 'image/webp'], ['gif', 'image/gif'], ['heic', 'image/heic'],
+  ['heif', 'image/heic'], ['pdf', 'application/pdf'], ['txt', 'text/plain'],
+  ['md', 'text/markdown'], ['csv', 'text/csv'], ['json', 'application/json'],
+  ['xml', 'application/xml'], ['zip', 'application/zip'], ['rar', 'application/vnd.rar'],
+  ['7z', 'application/x-7z-compressed'], ['gz', 'application/gzip'],
+  ['tar', 'application/x-tar'], ['doc', 'application/msword'],
+  ['docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+  ['xls', 'application/vnd.ms-excel'],
+  ['xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+  ['ppt', 'application/vnd.ms-powerpoint'],
+  ['pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+  ['mp3', 'audio/mpeg'], ['wav', 'audio/wav'], ['mp4', 'video/mp4'],
+  ['mov', 'video/quicktime'], ['webm', 'video/webm'], ['mkv', 'video/x-matroska'],
+])
+
+/** Reject active content types that a browser must never render from this route. */
+const ACTIVE_MIME = /^(?:text\/html|application\/xhtml\+xml|image\/svg\+xml|application\/javascript|text\/javascript|application\/ecmascript|text\/ecmascript)$/i
+
+function sanitizeMime(raw) {
+  if (typeof raw !== 'string') return ''
+  const value = raw.split(';', 1)[0].trim().toLowerCase()
+  if (!/^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/.test(value)) return ''
+  return ACTIVE_MIME.test(value) ? 'application/octet-stream' : value
+}
+
+function extensionFor(name, mime) {
+  const match = /\.([a-z0-9]{1,12})$/i.exec(name)
+  if (match) return match[1].toLowerCase()
+  for (const [ext, candidate] of MIME_BY_EXT) {
+    if (candidate === mime) return ext
+  }
+  return 'bin'
+}
+
+function mimeForExtension(ext) {
+  return MIME_BY_EXT.get(ext) ?? 'application/octet-stream'
+}
+
+/** Attachment disposition keeps arbitrary files from rendering as a same-origin page. */
+function contentDisposition(name) {
+  const fallback = String(name).replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_')
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(name)}`
 }
 
 /** Constant-time comparison that still walks the full length. */
@@ -300,7 +347,7 @@ export function createBridge(options = {}) {
       url,
       maxBytes,
       queue: items.size,
-      version: '1.0.0',
+      version: '1.1.0',
       stats: { ...stats },
     }
     if (url) {
@@ -371,6 +418,7 @@ export function createBridge(options = {}) {
     res.writeHead(200, {
       'content-type': item.mime,
       'content-length': String(stat.size),
+      'content-disposition': contentDisposition(item.name),
       'cache-control': 'no-store',
       'x-content-type-options': 'nosniff',
       'cross-origin-resource-policy': 'same-origin',
@@ -476,14 +524,16 @@ export function createBridge(options = {}) {
       sendJson(res, 415, { ok: false, code: 'BAD_TYPE' })
       return
     }
-    const media = sniffMedia(head)
-    if (!media) {
-      sendJson(res, 415, { ok: false, code: 'BAD_TYPE' })
-      return
-    }
     const id = randomId()
     const at = Date.now()
-    const diskName = `${at}-${id}.${media.ext}`
+    const rawName = displayName(req.headers['x-filename'], '')
+    const media = sniffMedia(head)
+    const declaredMime = sanitizeMime(req.headers['content-type'])
+    const mime = media?.mime
+      ?? (declaredMime && !declaredMime.startsWith('image/') ? declaredMime : 'application/octet-stream')
+    const ext = media?.ext ?? extensionFor(rawName, mime)
+    const name = rawName || `file-${at}-${id}.${ext}`
+    const diskName = `${at}-${id}.${ext}`
     const target = path.join(inboxDir, diskName)
     try {
       await fsp.writeFile(target, Buffer.concat(chunks), { flag: 'wx' })
@@ -492,11 +542,10 @@ export function createBridge(options = {}) {
       sendJson(res, 500, { ok: false, code: 'WRITE_FAILED' })
       return
     }
-    const name = displayName(req.headers['x-filename'], `photo-${id}.${media.ext}`)
-    const item = { id, seq: ++seq, name, mime: media.mime, bytes: total, path: target, at }
+    const item = { id, seq: ++seq, name, mime, bytes: total, path: target, at }
     enqueue(item)
     stats.uploads += 1
-    sendJson(res, 200, { ok: true, id, seq: item.seq, bytes: total, mime: media.mime, name })
+    sendJson(res, 200, { ok: true, id, seq: item.seq, bytes: total, mime, name })
   }
 
   async function handlePhone(req, res) {
@@ -527,7 +576,7 @@ export function createBridge(options = {}) {
       }
       stats.lastPhoneUa = String(req.headers['user-agent'] ?? '').slice(0, 300)
       stats.lastPhoneAt = Date.now()
-      sendHtml(res, 200, phonePageHtml(token))
+      sendHtml(res, 200, phonePageHtml(token, { maxBytes }))
       return
     }
     if (req.method !== 'POST') {
@@ -573,13 +622,14 @@ export function createBridge(options = {}) {
         await removeFile(full)
         continue
       }
+      const ext = path.extname(name).slice(1).toLowerCase()
       const media = await sniffFile(full)
-      if (!media) continue
+      const displayExt = media?.ext ?? (ext || 'bin')
       restored.push({
         id: randomId(),
         seq: 0,
-        name: `photo-${name.replace(/\.[^.]+$/, '')}.${media.ext}`,
-        mime: media.mime,
+        name: `file-${name.replace(/\.[^.]+$/, '')}.${displayExt}`,
+        mime: media?.mime ?? mimeForExtension(displayExt),
         bytes: stat.size,
         path: full,
         at: stat.mtimeMs,

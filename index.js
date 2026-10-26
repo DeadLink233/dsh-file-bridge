@@ -1,5 +1,5 @@
 /**
- * Host half of the phone photo bridge.
+ * Host half of the phone file bridge.
  *
  * Starts a small LAN listener for the phone page and uploads, and registers the
  * loopback-only JSON/byte routes that the Web client half consumes. DSH's own
