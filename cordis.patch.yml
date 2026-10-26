@@ -1,5 +1,5 @@
 - insert:
     - id: photo-bridge
-      name: 'dsh-photo-bridge'
+      name: 'dsh-file-bridge'
       config:
         port: 8787

@@ -35,7 +35,7 @@
 
 ```bash
 # 固定到某个 commit，避免默认分支后续变动
-dsh plugin --profile <profile> add github:DeadLink233/dsh-photo-bridge#<commit-sha>
+dsh plugin --profile <profile> add github:DeadLink233/dsh-file-bridge#<commit-sha>
 ```
 
 也可以打开 DSH 侧边栏 **Plugins → Add plugin**，填写 GitHub 仓库地址。
@@ -43,7 +43,7 @@ dsh plugin --profile <profile> add github:DeadLink233/dsh-photo-bridge#<commit-s
 ### 从 npm 安装（发布后）
 
 ```bash
-dsh plugin --profile <profile> add dsh-photo-bridge
+dsh plugin --profile <profile> add dsh-file-bridge
 ```
 
 ### 从 DSH Hub 安装（可选）
@@ -52,9 +52,9 @@ dsh plugin --profile <profile> add dsh-photo-bridge
 
 ### 本地目录安装
 
-1. 解压或克隆到本地，得到 `dsh-photo-bridge/` 文件夹。
+1. 解压或克隆到本地，得到 `dsh-file-bridge/` 文件夹。
 2. DSH → **Plugins → Add plugin**。
-3. 填入该文件夹的绝对路径，例如 `C:\Tools\dsh-photo-bridge`；不要填 zip 本身的路径。
+3. 填入该文件夹的绝对路径，例如 `C:\Tools\dsh-file-bridge`；不要填 zip 本身的路径。
 4. 确认插件行为为 `applied`、开关为开。
 
 这是本地目录链接安装：移动或删除该文件夹会让插件失效；移动后重新 Add plugin 即可。Host 半的改动通常需要重载或重启 DSH 才会生效。
@@ -84,7 +84,7 @@ dsh plugin --profile <profile> add dsh-photo-bridge
 ```yaml
 - insert:
     - id: photo-bridge
-      name: 'dsh-photo-bridge'
+      name: 'dsh-file-bridge'
       config:
         port: 8787
         # bind: 192.168.1.5        # 默认自动取第一个非回环 IPv4
@@ -124,7 +124,7 @@ Windows 通常位于 `%USERPROFILE%\.dsh\photo-bridge\`；macOS / Linux 通常�
 
 ## 卸载
 
-1. 在 DSH 的 Plugins 页面关闭并移除 `dsh-photo-bridge`。
+1. 在 DSH 的 Plugins 页面关闭并移除 `dsh-file-bridge`。
 2. 插件卸载时会关闭传输端口；如果 Host 进程仍在运行，最迟下次重启后端口释放。
 3. 数据目录不会自动删除。确认不需要历史文件后，手动删除 `<DSH home>/photo-bridge/`。
 4. 想立即让所有旧配对链接失效：删除 `state.json` 或其中的 token 后重启 DSH。

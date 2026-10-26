@@ -13,7 +13,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: 'dsh-photo-bridge',
+  id: 'dsh-file-bridge',
   factory(require) {
     const React = require('react')
     const ReactDOM = require('react-dom')
